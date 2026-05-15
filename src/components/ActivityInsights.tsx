@@ -3,14 +3,9 @@ import type { RecordPoint } from "../types";
 import { enableChartWheelPageScroll } from "../lib/chartScroll";
 import { buildHeartRateZones, resolveHeartRateZoneIndex } from "../lib/hrZones";
 import { applyRollingAverageSeries, getDynamicSmoothingWindow } from "../lib/chartSmoothing";
-import {
-  convertElevationMeters,
-  convertSpeedMps,
-  elevationLabel,
-  speedLabel,
-  type DistanceUnit,
-} from "../lib/units";
+import { convertElevationMeters, convertSpeedMps, type DistanceUnit, elevationLabel, speedLabel, } from "../lib/units";
 import { useTranslation } from "../lib/i18n";
+import { calculateLapMarkers, formatAbsTime, formatRelTime } from "./Utils";
 
 type Props = {
   records: RecordPoint[];
@@ -27,25 +22,6 @@ function safeAvg(values: Array<number | null | undefined>): number | null {
   const nums = values.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
   if (!nums.length) return null;
   return nums.reduce((sum, n) => sum + n, 0) / nums.length;
-}
-
-function formatRelTime(ms: number): string {
-  const totalSec = Math.floor(Math.max(0, ms) / 1000);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  if (h > 0) {
-    return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  }
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-function formatAbsTime(baseTimestampMs: number, relMs: number): string {
-  const absolute = new Date(baseTimestampMs + Math.max(0, relMs));
-  const hh = String(absolute.getHours()).padStart(2, "0");
-  const mm = String(absolute.getMinutes()).padStart(2, "0");
-  const ss = String(absolute.getSeconds()).padStart(2, "0");
-  return `${hh}:${mm}:${ss}`;
 }
 
 export function ActivityInsights({
@@ -122,17 +98,7 @@ export function ActivityInsights({
 
   const hasPowerData = records.some((r) => typeof r.power === "number" && r.power > 0);
   const hasHeartRateData = records.some((r) => typeof r.heart_rate === "number" && r.heart_rate > 0);
-
-  const lapMarkers = lapTimestampsUtc
-    .slice(1)
-    .map((ts, idx) => {
-      const parsed = Date.parse(ts);
-      if (!Number.isFinite(parsed)) return null;
-      const relMs = parsed - t0;
-      if (relMs < 0) return null;
-      return { xAxis: relMs, name: `Lap ${idx + 1}` };
-    })
-    .filter((m): m is { xAxis: number; name: string } => m !== null);
+  const lapMarkers = calculateLapMarkers(lapTimestampsUtc, t0);
 
   const hrValues = records
     .map((r) => r.heart_rate)

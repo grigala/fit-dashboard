@@ -246,6 +246,9 @@
   "insights.speed": "Speed",
   "insights.power": "Power",
   "insights.samples": "Samples",
+  "insights.runningVo2": "Running VO2 Max",
+  "insights.cyclingVo2": "Cycling VO2 Max",
+  "insights.vo2": "ml/kg/min",
 
   "table.activitySummary": "Activity Summary Table",
   "table.last": "last",
@@ -279,6 +282,7 @@
   "trend.weeklyTrainingTrend": "Weekly Training Trend",
   "trend.distance": "Distance",
   "trend.duration": "Duration",
+  "trend.vo2max": "VO2 Max Trend",
 
   "compare.selectActivities": "Select up to 4 activities from the sidebar using the checkboxes to compare them.",
   "compare.loading": "Loading comparison data...",

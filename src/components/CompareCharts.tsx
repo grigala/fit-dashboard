@@ -3,26 +3,15 @@ import type { Activity, RecordPoint } from "../types";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { enableChartWheelPageScroll } from "../lib/chartScroll";
-import { convertElevationMeters, convertSpeedMps, elevationLabel, speedLabel, type DistanceUnit } from "../lib/units";
+import { convertElevationMeters, convertSpeedMps, type DistanceUnit, elevationLabel, speedLabel } from "../lib/units";
 import { useTranslation } from "../lib/i18n";
+import { formatRelTime } from "./Utils";
 
 type Props = {
   compareIds: number[];
   activities: Activity[];
   theme: "light" | "dark";
   distanceUnit: DistanceUnit;
-};
-
-// Format MM:SS or HH:MM:SS
-const formatRelTime = (ms: number) => {
-  const totalSec = Math.floor(Math.max(0, ms) / 1000);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  if (h > 0) {
-    return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  }
-  return `${m}:${s.toString().padStart(2, "0")}`;
 };
 
 const formatLegendDateTime = (rawUtc: string) => {
@@ -146,8 +135,8 @@ export function CompareCharts({ compareIds, activities, theme, distanceUnit }: P
     grid: { left: 48, right: 16, top: 40, bottom: 46 },
     xAxis: {
       type: "value",
-      axisLabel: { 
-        color: axisColor, 
+      axisLabel: {
+        color: axisColor,
         fontSize: 11,
         formatter: (val: number) => formatRelTime(val)
       },
