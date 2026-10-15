@@ -3,8 +3,9 @@ import type { RecordPoint } from "../types";
 import { enableChartWheelPageScroll } from "../lib/chartScroll";
 import { buildHeartRateZones } from "../lib/hrZones";
 import { applyRollingAverageSeries, getDynamicSmoothingWindow } from "../lib/chartSmoothing";
-import { convertDistanceMeters, convertPaceMinPerKm, distanceLabel, paceLabel, type DistanceUnit } from "../lib/units";
+import { convertDistanceMeters, convertPaceMinPerKm, distanceLabel, type DistanceUnit, paceLabel } from "../lib/units";
 import { useTranslation } from "../lib/i18n";
+import { calculateLapMarkers, formatRelTime } from "./Utils";
 
 type Props = {
   records: RecordPoint[];
@@ -31,18 +32,6 @@ export function ActivityChart({
   const totalDurationMs = Math.max(0, (records[records.length - 1]?.timestamp_ms ?? t0) - t0);
   const smoothWindow = smoothGraphs ? getDynamicSmoothingWindow(records.length, totalDurationMs, zoomRange) : 1;
   const { t } = useTranslation();
-  
-  // Format MM:SS or HH:MM:SS
-  const formatRelTime = (ms: number) => {
-    const totalSec = Math.floor(Math.max(0, ms) / 1000);
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    const s = totalSec % 60;
-    if (h > 0) {
-      return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-    }
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
 
   const formatAbsTime = (relMs: number) => {
     const absolute = new Date(t0 + Math.max(0, relMs));
@@ -73,17 +62,7 @@ export function ActivityChart({
 
   const hrSeriesSmoothed = smoothGraphs ? applyRollingAverageSeries(hrSeriesData, 1, smoothWindow) : hrSeriesData;
   const paceSeriesSmoothed = smoothGraphs ? applyRollingAverageSeries(paceSeriesData, 1, smoothWindow) : paceSeriesData;
-
-  const lapMarkers = lapTimestampsUtc
-    .slice(1)
-    .map((ts, idx) => {
-      const parsed = Date.parse(ts);
-      if (!Number.isFinite(parsed)) return null;
-      const relMs = parsed - t0;
-      if (relMs < 0) return null;
-      return { xAxis: relMs, name: `Lap ${idx + 1}` };
-    })
-    .filter((m): m is { xAxis: number; name: string } => m !== null);
+  const lapMarkers = calculateLapMarkers(lapTimestampsUtc, t0);
 
   const isDark = theme === "dark";
   const axisColor = isDark ? "#8899b8" : "#64748b";

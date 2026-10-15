@@ -10,14 +10,19 @@ import { OverviewLocationMap } from "./OverviewLocationMap";
 import { OverviewSportTypeDonut } from "./OverviewSportTypeDonut";
 import { OverviewWeeklyTrend } from "./OverviewWeeklyTrend";
 import { OverviewActivityTable } from "./OverviewActivityTable";
+import { OverviewActivityVo2Max } from "./OverviewActivityVo2Max";
 import { DatePickerPopover } from "./DatePickerPopover";
-import { DateRange } from "react-day-picker";
 import { DonationBanner } from "./DonationBanner";
 import { SettingsPanel } from "./SettingsPanel";
 import { api } from "../lib/api";
 import { isTauri } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { exportSingleActivity, exportBulkActivities, type ExportFormat, type BulkExportProgress } from "../lib/exportUtils";
+import {
+  type BulkExportProgress,
+  exportBulkActivities,
+  type ExportFormat,
+  exportSingleActivity
+} from "../lib/exportUtils";
 import { useSettingsStore } from "../stores/settingsStore";
 import type { Activity, RecordPoint } from "../types";
 import appIcon from "../assets/app-icon.svg";
@@ -30,51 +35,13 @@ import {
   speedLabel,
 } from "../lib/units";
 import { useTranslation } from "../lib/i18n";
+import { formatDateShort, parseActivityMetadata, parseUtcDate } from "./Utils";
 
 type Props = { onLogout: () => Promise<void> };
 
 type VersionBadgeStatus = {
   state: "hidden" | "latest" | "update";
   latestVersion: string | null;
-};
-
-type ActivityMetadata = {
-  heart_rate_zone_bounds_bpm?: number[];
-  file_id?: {
-    product_name?: string | null;
-    serial_number?: number | null;
-  };
-  activity_metrics?: {
-    vo2_max?: number | null;
-  };
-  session?: {
-    beginning_body_battery?: number | null;
-    ending_body_battery?: number | null;
-    max_heart_rate?: number | null;
-    avg_heart_rate?: number | null;
-    max_cadence?: number | null;
-    avg_cadence?: number | null;
-    total_elapsed_time_s?: number | null;
-    total_distance_m?: number | null;
-    total_calories?: number | null;
-  };
-  laps?: Array<{
-    start_ts_utc?: string | null;
-    end_ts_utc?: string | null;
-    total_elapsed_time_s?: number | null;
-    total_timer_time_s?: number | null;
-    total_distance_m?: number | null;
-    avg_speed_m_s?: number | null;
-    max_speed_m_s?: number | null;
-    avg_heart_rate?: number | null;
-    max_heart_rate?: number | null;
-    total_ascent_m?: number | null;
-    total_descent_m?: number | null;
-    avg_cadence?: number | null;
-    max_cadence?: number | null;
-    total_calories?: number | null;
-    best_speed_m_s?: number | null;
-  }>;
 };
 
 /* ── Helpers ─────────────────────────────────────────────────────── */
@@ -105,16 +72,6 @@ function formatPace(secondsPerUnit: number, unit: string): string {
 function shortenFileName(name: string, maxLength = 45): string {
   if (name.length <= maxLength) return name;
   return `${name.slice(0, maxLength)}...`;
-}
-
-function parseActivityMetadata(raw?: string): ActivityMetadata | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as ActivityMetadata;
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch {
-    return null;
-  }
 }
 
 function isTauriRuntime(): boolean {
@@ -406,13 +363,6 @@ export function Dashboard({ onLogout }: Props) {
     void loadSupporterStatus();
   }, []);
 
-  function parseUtcDate(input: string): Date {
-    const trimmed = input.trim();
-    const normalized = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
-    const hasZone = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(normalized);
-    return new Date(hasZone ? normalized : `${normalized}Z`);
-  }
-
   const filtered = useMemo(() => {
     const minSec = minDurationMinutes ? Number(minDurationMinutes) * 60 : null;
     const maxSec = maxDurationMinutes ? Number(maxDurationMinutes) * 60 : null;
@@ -492,12 +442,6 @@ export function Dashboard({ onLogout }: Props) {
   const recordStats = useMemo(() => computeRecordStats(records), [records]);
 
   function formatDate(input: string): string {
-    const date = parseUtcDate(input);
-    if (Number.isNaN(date.getTime())) return input;
-    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).replace(/^(\d{2}\s+[A-Za-z]{3})\s+(\d{4})$/, "$1, $2");
-  }
-
-  function formatDateShort(input: string): string {
     const date = parseUtcDate(input);
     if (Number.isNaN(date.getTime())) return input;
     return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).replace(/^(\d{2}\s+[A-Za-z]{3})\s+(\d{4})$/, "$1, $2");
@@ -1551,6 +1495,7 @@ export function Dashboard({ onLogout }: Props) {
               <OverviewLocationMap records={overviewRecords} mapStyle={mapStyle} setMapStyle={setMapStyle} />
               <OverviewWeeklyTrend activities={filtered} distanceUnit={distanceUnit} theme={theme} />
               <OverviewActivityTable activities={filtered} distanceUnit={distanceUnit} timeFormat={timeFormat} />
+              { activities.filter((a) => parseActivityMetadata(a.metadata_json)?.activity_metrics?.vo2_max !== null).length > 0 && <OverviewActivityVo2Max activities={filtered}  theme={theme} />}
             </>
             )
           ) : tab === "compare" ? (
